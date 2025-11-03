@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>变质岩图解工具</title>
+    <meta charset="UTF-8">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@12.3.1/dist/handsontable.full.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        h4 { margin: 10px 0 5px 0; }
+        .container { display: flex; flex-wrap: wrap; }
+        .table-container { flex: 1; min-width: 650px; margin-right: 20px; padding-right: 20px; border-right: 1px solid #ccc; }
+        .plot-container { flex: 1; min-width: 500px; min-height: 500px; }
+        #plot { width: 600px; height: 600px; } 
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 10px 5px 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background-color: #0056b3; }
+        
+        #calculation-methods {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap; /* 允许换行 */
+            background-color: #fdfdfd;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 0 15px 10px 15px;
+            margin-top: 15px;
+        }
+        /* 【!! 更新 !!】 修改了布局以容纳新的铁格式选项 */
+        #calculation-methods > div {
+            flex-basis: 200px; /* 为每个方法组设置基础宽度 */
+            flex-grow: 1;
+            margin: 0 5px;
+        }
+        #iron-format-options {
+            flex-basis: 100%; /* 让铁格式选项单独占一行 */
+            border-top: 1px solid #eee;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+        #calculation-methods label { display: block; font-size: 14px; margin-top: 5px; }
+
+        #formula-display {
+            font-family: monospace;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        #formula-display h4 { font-family: sans-serif; margin-top: 0; }
+        #formula-display small {
+            font-size: 12px;
+            color: #555;
+            display: block;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        #formula-display ul { padding-left: 20px; margin: 0; }
+        #formula-display strong { color: #d9534f; }
+    </style>
+</head>
+<body>
+
+    <h1>变质岩三元图解工具</h1>
+    <div class="container">
+        <div class="table-container">
+            <h2>全岩成分表 (wt%)</h2>
+            <p>请在下方表格中输入您的全岩氧化物重量百分比 (wt%)：<br>
+               <strong style="color: #d9534f;">注意: 请在 `FeT` 列输入您的全铁数据, 并在下方 "全铁输入格式" 处选择您的数据类型。</strong><br>
+               <strong style="color: #007bff;">提示: 您可以在 "Group" 列中为样品分类，图表将自动应用不同形状。</strong>
+            </p>
+            
+            <div id="data-table"></div>
+
+            <button id="plot-acf-btn">绘制 ACF 图</button>
+            <button id="plot-akf-btn">绘制 A'KF 图</button>
+            <button id="plot-afm-btn">绘制 AFM 图</button>
+
+            <div id="calculation-methods">
+                <div id="iron-format-options">
+                    <h4>全铁输入格式 (FeT)</h4>
+                    <label>
+                        <input type="radio" name="iron_format" value="Fe2O3T" checked>
+                        以 `Fe₂O₃` 形式输入 (默认)
+                    </label>
+                    <label>
+                        <input type="radio" name="iron_format" value="FeOT">
+                        以 `FeO` 形式输入
+                    </label>
+                </div>
+
+                <div id="acf-options">
+                    <h4>ACF 计算方法</h4>
+                    <label>
+                        <input type="radio" name="acf_method" value="Eskola_1915" checked>
+                        Eskola (1915)
+                    </label>
+                    <label>
+                        <input type="radio" name="acf_method" value="No_P2O5_Correction">
+                        无 P₂O₅ 校正 (示例)
+                    </label>
+                </div>
+                <div id="akf-options">
+                    <h4>A'KF 计算方法</h4>
+                    <label>
+                        <input type="radio" name="akf_method" value="Eskola_1915" checked>
+                        Eskola (1915)
+                    </label>
+                </div>
+                <div id="afm-options">
+                    <h4>AFM 计算方法</h4>
+                    <label>
+                        <input type="radio" name="afm_method" value="Thompson_1957_Musc" checked>
+                        Thompson (1957) - 白云母投影
+                    </label>
+                    <label>
+                        <input type="radio" name="afm_method" value="Thompson_1957_Kfs">
+                        Thompson (1957) - 钾长石投影
+                    </label>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="plot-container">
+            <h2>图表区域</h2>
+            <div id="plot"></div>
+            <div id="formula-display">
+                </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@12.3.1/dist/handsontable.full.min.js"></script>
+
+    <script>
+        let hotInstance;
+        
+        // 【!! 更新 !!】 移除了 Fe₂O₃
+        const molecularWeights = {
+            'SiO₂': 60.08, 'TiO₂': 79.87, 'Al₂O₃': 101.96, 'MnO': 70.94, 
+            'MgO': 40.30, 'CaO': 56.08, 'Na₂O': 61.98, 'K₂O': 94.20, 'P₂O₅': 141.94
+        };
+        const mw_Fe2O3 = 159.69;
+        const mw_FeO = 71.84;
+
+        // 【!! 更新 !!】 Fe₂O₃ -> FeT
+        const oxideOrder = [
+            'SiO₂', 'TiO₂', 'Al₂O₃', 'FeT', 'MnO', 'MgO', 'CaO', 'Na₂O', 'K₂O', 'P₂O₅'
+        ];
+        
+        const formulaStore = {
+            'Eskola_1915_ACF': "<h4>ACF (Eskola 1915)</h4>A = [Al₂O₃] - [Na₂O] - [K₂O]<br>C = [CaO] - 3.33 * [P₂O₅]<br>F = [FeO_eq] + [MgO] + [MnO]",
+            'No_P2O5_Correction_ACF': "<h4>ACF (无 P₂O₅ 校正)</h4>A = [Al₂O₃] - [Na₂O] - [K₂O]<br>C = [CaO]<br>F = [FeO_eq] + [MgO] + [MnO]",
+            'Eskola_1915_AKF': "<h4>A'KF (Eskola 1915)</h4>A' = [Al₂O₃] - [Na₂O] - [K₂O] - [CaO]<br>K = [K₂O]<br>F = [FeO_eq] + [MgO] + [MnO]",
+            'Thompson_1957_Musc_AFM': "<h4>AFM (Thompson 1957 - 白云母投影)</h4>A = [Al₂O₃] - 3 * [K₂O]<br>F = [FeO_eq] + [MnO]<br>M = [MgO]",
+            'Thompson_1957_Kfs_AFM': "<h4>AFM (Thompson 1957 - 钾长石投影)</h4>A = [Al₂O₃] - [K₂O]<br>F = [FeO_eq] + [MnO]<br>M = [MgO]"
+        };
+
+        const commonFormulaNotes = `
+            <small>
+                <strong>注意:</strong>
+                <ul>
+                    <li>所有 [ ] 均为氧化物摩尔比例。</li>
+                    <li><strong>[FeO_eq]</strong> (等效FeO) = 由您输入的 [FeT] 值及所选的'全铁输入格式'换算而来。</li>
+                    <li>在 ACF 的 <strong>A</strong> 端元计算中, 任何三价铁均被忽略 (假定全铁为二价)。</li>
+                </ul>
+            </small>
+        `;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setupTable();
+            registerButtonListeners();
+        });
+        
+        // 【!! 更新 !!】 setupTable
+        function setupTable() {
+            // Fe₂O₃ -> FeT
+            const colHeaders = ['Sample ID', 'Group', ...oxideOrder]; 
+            const sampleData = []; // 默认空表格
+            
+            const columnsConfig = [ 
+                { data: 'Sample ID', type: 'text' },
+                { data: 'Group', type: 'text' }
+            ];
+            // oxideOrder 数组现在包含 'FeT'
+            oxideOrder.forEach(oxide => {
+                columnsConfig.push({
+                    data: oxide, type: 'numeric', numericFormat: { pattern: '0.00' }
+                });
+            });
+
+            const container = document.getElementById('data-table');
+            hotInstance = new Handsontable(container, {
+                data: sampleData, colHeaders: colHeaders, columns: columnsConfig,
+                rowHeaders: true, minSpareRows: 1, contextMenu: true,
+                licenseKey: 'non-commercial-and-evaluation'
+            });
+        }
+        
+        function registerButtonListeners() {
+            document.getElementById('plot-acf-btn').addEventListener('click', plotACF);
+            document.getElementById('plot-akf-btn').addEventListener('click', plotAKF);
+            document.getElementById('plot-afm-btn').addEventListener('click', plotAFM);
+        }
+
+        // 绘图函数 (无变化)
+        function plotACF() {
+            const method = document.querySelector('input[name="acf_method"]:checked').value;
+            const plotData = calculateCoordinates('ACF', method);
+            let title = 'ACF 图解 (Eskola 1915)';
+            if (method === 'No_P2O5_Correction') {
+                title = 'ACF 图解 (无 P₂O₅ 校正)';
+            }
+            drawTernaryPlot(plotData, title, 'A', 'C', 'F', 'ACF', method);
+        }
+        function plotAKF() {
+            const method = document.querySelector('input[name="akf_method"]:checked').value;
+            const plotData = calculateCoordinates('AKF', method);
+            let title = "A'KF 图解 (Eskola 1915)";
+            drawTernaryPlot(plotData, title, "A'", "K", "F", 'AKF', method);
+        }
+        function plotAFM() {
+            const method = document.querySelector('input[name="afm_method"]:checked').value;
+            const plotData = calculateCoordinates('AFM', method);
+            let title = 'AFM 图解';
+            if (method === 'Thompson_1957_Musc') {
+                title = 'AFM 图解 (Thompson 1957, 白云母投影)';
+            } else if (method === 'Thompson_1957_Kfs') {
+                title = 'AFM 图解 (Thompson 1957, 钾长石投影)';
+            }
+            drawTernaryPlot(plotData, title, 'A', 'M', 'F', 'AFM', method);
+        }
+
+        // 【!! 更新 !!】 getDataFromTable
+        function getDataFromTable() {
+            const rawData = hotInstance.getSourceData();
+            const cleanData = [];
+            for (const row of rawData) {
+                if (row['Sample ID'] && row['Al₂O₃'] != null) {
+                    let cleanRow = { 
+                        'Sample ID': row['Sample ID'],
+                        'Group': row['Group'] || 'Default' 
+                    };
+                    // 循环遍历 oxideOrder (包含 'FeT')
+                    oxideOrder.forEach(oxide => {
+                        cleanRow[oxide] = parseFloat(row[oxide]) || 0.0;
+                    });
+                    cleanData.push(cleanRow);
+                }
+            }
+            return cleanData;
+        }
+
+        // 【!! 重大更新 !!】 calculateCoordinates
+        function calculateCoordinates(type, method) {
+            const data = getDataFromTable();
+            // 【!! 新增 !!】 读取全铁格式
+            const ironFormat = document.querySelector('input[name="iron_format"]:checked').value;
+            const coordinates = [];
+            
+            if (data.length === 0) {
+                return [];
+            }
+
+            for (const row of data) {
+                const moles = {};
+                // a. 计算非铁氧化物的摩尔
+                for (const oxide in molecularWeights) { // molecularWeights 不包含 'FeT'
+                    moles[oxide] = row[oxide] / molecularWeights[oxide];
+                }
+                
+                // b. 【!! 新的铁计算逻辑 !!】
+                const ironValue = row['FeT']; // 获取 'FeT' 列的值
+                let moles_FeO_equiv;
+                const moles_Fe2O3_for_A = 0; // 保持为0
+
+                if (ironFormat === 'Fe2O3T') {
+                    // 用户输入的是 Fe₂O₃T
+                    const moles_Fe2O3 = ironValue / mw_Fe2O3;
+                    moles_FeO_equiv = moles_Fe2O3 * 2;
+                } else { // ironFormat === 'FeOT'
+                    // 用户输入的是 FeOT
+                    moles_FeO_equiv = ironValue / mw_FeO;
+                }
+                
+                // c. 之后的计算不变, 它们使用 moles_FeO_equiv 和 moles_Fe2O3_for_A
+                let rawA, rawC, rawF, rawK, rawM, normFactor; 
+                let coordPoint = { 
+                    id: row['Sample ID'],
+                    group: row['Group']
+                };
+
+                if (type === 'ACF') {
+                    let caoCorrected;
+                    rawA = moles['Al₂O₃'] + moles_Fe2O3_for_A - moles['Na₂O'] - moles['K₂O'];
+                    rawF = moles_FeO_equiv + moles['MgO'] + moles['MnO'];
+                    switch (method) {
+                        case 'No_P2O5_Correction': rawC = moles['CaO']; break;
+                        case 'Eskola_1915':
+                        default:
+                            caoCorrected = moles['CaO'] - (3.33 * moles['P₂O₅']);
+                            rawC = (caoCorrected < 0) ? 0 : caoCorrected;
+                            break;
+                    }
+                    if (rawA < 0) rawA = 0; if (rawC < 0) rawC = 0; if (rawF < 0) rawF = 0;
+                    normFactor = rawA + rawC + rawF;
+                    if (normFactor > 0) {
+                        coordPoint.a = (rawA / normFactor) * 100;
+                        coordPoint.b = (rawC / normFactor) * 100;
+                        coordPoint.c = (rawF / normFactor) * 100;
+                        coordinates.push(coordPoint);
+                    }
+                } else if (type === 'AKF') {
+                    switch (method) {
+                        case 'Eskola_1915':
+                        default:
+                            rawA = moles['Al₂O₃'] - moles['Na₂O'] - moles['K₂O'] - moles['CaO'];
+                            rawK = moles['K₂O'];
+                            rawF = moles_FeO_equiv + moles['MgO'] + moles['MnO'];
+                            break;
+                    }
+                    if (rawA < 0) rawA = 0; if (rawK < 0) rawK = 0; if (rawF < 0) rawF = 0;
+                    normFactor = rawA + rawK + rawF;
+                    if (normFactor > 0) {
+                        coordPoint.a = (rawA / normFactor) * 100;
+                        coordPoint.b = (rawK / normFactor) * 100;
+                        coordPoint.c = (rawF / normFactor) * 100;
+                        coordinates.push(coordPoint);
+                    }
+                } else if (type === 'AFM') {
+                    rawF = moles_FeO_equiv + moles['MnO'];
+                    rawM = moles['MgO'];
+                    switch (method) {
+                        case 'Thompson_1957_Kfs': rawA = moles['Al₂O₃'] - moles['K₂O']; break;
+                        case 'Thompson_1957_Musc':
+                        default:
+                            rawA = moles['Al₂O₃'] - (3 * moles['K₂O']);
+                            break;
+                    }
+                    if (rawA < 0) rawA = 0; if (rawF < 0) rawF = 0; if (rawM < 0) rawM = 0;
+                    normFactor = rawA + rawF + rawM;
+                    if (normFactor > 0) {
+                        coordPoint.a = (rawA / normFactor)* 100;
+                        coordPoint.b = (rawM / normFactor) * 100;
+                        coordPoint.c = (rawF / normFactor) * 100;
+                        coordinates.push(coordPoint);
+                    }
+                }
+            }
+            return coordinates;
+        }
+
+
+        function drawTernaryPlot(plotData, title, aLabel, bLabel, cLabel, plotType, method) {
+            
+            const groups = {};
+            for (const p of plotData) {
+                const groupName = p.group;
+                if (!groups[groupName]) {
+                    groups[groupName] = [];
+                }
+                groups[groupName].push(p);
+            }
+
+            const symbolList = ['circle', 'square', 'diamond', 'triangle-up', 'cross', 'pentagon', 'star'];
+            
+            let traces = [];
+            let groupIndex = 0;
+            
+            for (const groupName in groups) {
+                const groupData = groups[groupName];
+                const currentSymbol = symbolList[groupIndex % symbolList.length]; 
+
+                traces.push({
+                    type: 'scatterternary',
+                    mode: 'markers+text',
+                    a: groupData.map(p => p.a),
+                    b: groupData.map(p => p.b),
+                    c: groupData.map(p => p.c),
+                    text: groupData.map(p => p.id),
+                    textposition: 'top right',
+                    name: groupName, 
+                    showlegend: true,
+                    cliponaxis: false, 
+                    marker: {
+                        symbol: currentSymbol, 
+                        size: 10
+                    }
+                });
+                
+                groupIndex++;
+            }
+
+            if (traces.length === 0) {
+                traces.push({
+                    type: 'scatterternary', mode: 'markers',
+                    a: [], b: [], c: [], 
+                    name: '无数据', showlegend: false
+                });
+            }
+
+            const layout = {
+                title: title, 
+                ternary: {
+                    aaxis: { title: aLabel, min: 0, max: 100 },
+                    baxis: { title: bLabel, min: 0, max: 100 },
+                    caxis: { title: cLabel, min: 0, max: 100 },
+                    sum: 100,
+                    domain: { x: [0.1, 0.9], y: [0.15, 0.95] }
+                },
+                margin: { l: 80, r: 80, b: 80, t: 100 },
+                showlegend: true, 
+                legend: { x: 1.1, y: 0.5 }
+            };
+            
+            const plotConfig = {
+                toImageButtonOptions: {
+                  format: 'svg',
+                  filename: title,
+                  height: 600,
+                  width: 800
+                },
+                responsive: true
+            };
+            
+            Plotly.newPlot('plot', traces, layout, plotConfig);
+
+            // 更新公式显示
+            const formulaBox = document.getElementById('formula-display');
+            // 检查是否有数据，如果没有数据，不显示公式
+            if (plotData.length === 0) {
+                 formulaBox.innerHTML = '<h4>请输入数据并点击“绘制”按钮</h4>';
+                 return; // 提前退出
+            }
+
+            const formulaKey = `${method}_${plotType}`;
+            if (formulaStore[formulaKey]) {
+                formulaBox.innerHTML = formulaStore[formulaKey] + commonFormulaNotes;
+            } else {
+                formulaBox.innerHTML = '<h4>未找到匹配的公式</h4>';
+            }
+        }
+
+    </script>
+</body>
+</html>

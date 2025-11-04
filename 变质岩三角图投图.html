@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>变质岩图解工具</title>
+    <title>岩图 (MetaPlot)</title>
     <meta charset="UTF-8">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@12.3.1/dist/handsontable.full.min.css">
@@ -30,21 +30,20 @@
         #calculation-methods {
             display: flex;
             justify-content: space-between;
-            flex-wrap: wrap; /* 允许换行 */
+            flex-wrap: wrap;
             background-color: #fdfdfd;
             border: 1px solid #eee;
             border-radius: 5px;
             padding: 0 15px 10px 15px;
             margin-top: 15px;
         }
-        /* 【!! 更新 !!】 修改了布局以容纳新的铁格式选项 */
         #calculation-methods > div {
-            flex-basis: 200px; /* 为每个方法组设置基础宽度 */
+            flex-basis: 200px;
             flex-grow: 1;
             margin: 0 5px;
         }
         #iron-format-options {
-            flex-basis: 100%; /* 让铁格式选项单独占一行 */
+            flex-basis: 100%;
             border-top: 1px solid #eee;
             margin-top: 10px;
             padding-top: 10px;
@@ -76,7 +75,7 @@
 </head>
 <body>
 
-    <h1>变质岩三元图解工具</h1>
+    <h1>岩图 (MetaPlot) - 变质岩三元图解工具</h1>
     <div class="container">
         <div class="table-container">
             <h2>全岩成分表 (wt%)</h2>
@@ -151,7 +150,6 @@
     <script>
         let hotInstance;
         
-        // 【!! 更新 !!】 移除了 Fe₂O₃
         const molecularWeights = {
             'SiO₂': 60.08, 'TiO₂': 79.87, 'Al₂O₃': 101.96, 'MnO': 70.94, 
             'MgO': 40.30, 'CaO': 56.08, 'Na₂O': 61.98, 'K₂O': 94.20, 'P₂O₅': 141.94
@@ -159,7 +157,6 @@
         const mw_Fe2O3 = 159.69;
         const mw_FeO = 71.84;
 
-        // 【!! 更新 !!】 Fe₂O₃ -> FeT
         const oxideOrder = [
             'SiO₂', 'TiO₂', 'Al₂O₃', 'FeT', 'MnO', 'MgO', 'CaO', 'Na₂O', 'K₂O', 'P₂O₅'
         ];
@@ -186,19 +183,22 @@
         document.addEventListener('DOMContentLoaded', function() {
             setupTable();
             registerButtonListeners();
+            // 【!! 修改 !!】 恢复页面加载时自动绘图
+            plotACF(); 
         });
         
-        // 【!! 更新 !!】 setupTable
         function setupTable() {
-            // Fe₂O₃ -> FeT
-            const colHeaders = ['Sample ID', 'Group', ...oxideOrder]; 
-            const sampleData = []; // 默认空表格
+            const colHeaders = ['Sample ID', 'Group', ...oxideOrder];
+            
+            // 【!! 修改 !!】 恢复一行示例数据
+            const sampleData = [
+                { 'Sample ID': '示例:泥质岩', 'Group': 'Group A', 'SiO₂': 60.9, 'TiO₂': 0.8, 'Al₂O₃': 19.5, 'FeT': 5.98, 'MnO': 0.1, 'MgO': 2.2, 'CaO': 1.3, 'Na₂O': 1.1, 'K₂O': 3.5, 'P₂O₅': 0.1 }
+            ];
             
             const columnsConfig = [ 
                 { data: 'Sample ID', type: 'text' },
                 { data: 'Group', type: 'text' }
             ];
-            // oxideOrder 数组现在包含 'FeT'
             oxideOrder.forEach(oxide => {
                 columnsConfig.push({
                     data: oxide, type: 'numeric', numericFormat: { pattern: '0.00' }
@@ -207,8 +207,12 @@
 
             const container = document.getElementById('data-table');
             hotInstance = new Handsontable(container, {
-                data: sampleData, colHeaders: colHeaders, columns: columnsConfig,
-                rowHeaders: true, minSpareRows: 1, contextMenu: true,
+                data: sampleData, // 绑定示例数据
+                colHeaders: colHeaders, 
+                columns: columnsConfig,
+                rowHeaders: true, 
+                minSpareRows: 1, // 保持一个空行方便输入
+                contextMenu: true,
                 licenseKey: 'non-commercial-and-evaluation'
             });
         }
@@ -219,7 +223,7 @@
             document.getElementById('plot-afm-btn').addEventListener('click', plotAFM);
         }
 
-        // 绘图函数 (无变化)
+        // 绘图函数
         function plotACF() {
             const method = document.querySelector('input[name="acf_method"]:checked').value;
             const plotData = calculateCoordinates('ACF', method);
@@ -247,17 +251,17 @@
             drawTernaryPlot(plotData, title, 'A', 'M', 'F', 'AFM', method);
         }
 
-        // 【!! 更新 !!】 getDataFromTable
         function getDataFromTable() {
             const rawData = hotInstance.getSourceData();
             const cleanData = [];
             for (const row of rawData) {
-                if (row['Sample ID'] && row['Al₂O₃'] != null) {
+                // 修改：即使 Sample ID 为空，只要 Al2O3 有值，也尝试计算
+                // if (row['Sample ID'] && row['Al₂O₃'] != null) {
+                if (row['Al₂O₃'] != null) { // 检查 Al2O3 是否为 null 或 undefined
                     let cleanRow = { 
-                        'Sample ID': row['Sample ID'],
+                        'Sample ID': row['Sample ID'] || `(Row ${cleanData.length + 1})`, // 如果ID为空，给一个临时ID
                         'Group': row['Group'] || 'Default' 
                     };
-                    // 循环遍历 oxideOrder (包含 'FeT')
                     oxideOrder.forEach(oxide => {
                         cleanRow[oxide] = parseFloat(row[oxide]) || 0.0;
                     });
@@ -267,10 +271,8 @@
             return cleanData;
         }
 
-        // 【!! 重大更新 !!】 calculateCoordinates
         function calculateCoordinates(type, method) {
             const data = getDataFromTable();
-            // 【!! 新增 !!】 读取全铁格式
             const ironFormat = document.querySelector('input[name="iron_format"]:checked').value;
             const coordinates = [];
             
@@ -280,26 +282,21 @@
 
             for (const row of data) {
                 const moles = {};
-                // a. 计算非铁氧化物的摩尔
-                for (const oxide in molecularWeights) { // molecularWeights 不包含 'FeT'
+                for (const oxide in molecularWeights) {
                     moles[oxide] = row[oxide] / molecularWeights[oxide];
                 }
                 
-                // b. 【!! 新的铁计算逻辑 !!】
-                const ironValue = row['FeT']; // 获取 'FeT' 列的值
+                const ironValue = row['FeT'];
                 let moles_FeO_equiv;
-                const moles_Fe2O3_for_A = 0; // 保持为0
+                const moles_Fe2O3_for_A = 0; 
 
                 if (ironFormat === 'Fe2O3T') {
-                    // 用户输入的是 Fe₂O₃T
                     const moles_Fe2O3 = ironValue / mw_Fe2O3;
                     moles_FeO_equiv = moles_Fe2O3 * 2;
                 } else { // ironFormat === 'FeOT'
-                    // 用户输入的是 FeOT
                     moles_FeO_equiv = ironValue / mw_FeO;
                 }
                 
-                // c. 之后的计算不变, 它们使用 moles_FeO_equiv 和 moles_Fe2O3_for_A
                 let rawA, rawC, rawF, rawK, rawM, normFactor; 
                 let coordPoint = { 
                     id: row['Sample ID'],
@@ -407,7 +404,8 @@
                 groupIndex++;
             }
 
-            if (traces.length === 0) {
+            // 【!! 修改 !!】 检查 plotData, 而不是 traces
+            if (plotData.length === 0) {
                 traces.push({
                     type: 'scatterternary', mode: 'markers',
                     a: [], b: [], c: [], 
@@ -443,10 +441,9 @@
 
             // 更新公式显示
             const formulaBox = document.getElementById('formula-display');
-            // 检查是否有数据，如果没有数据，不显示公式
             if (plotData.length === 0) {
                  formulaBox.innerHTML = '<h4>请输入数据并点击“绘制”按钮</h4>';
-                 return; // 提前退出
+                 return;
             }
 
             const formulaKey = `${method}_${plotType}`;

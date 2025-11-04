@@ -62,3 +62,25 @@
 * 纯 HTML, CSS & JavaScript (ES6)
 * [Handsontable](https://handsontable.com/) - 用于交互式表格
 * [Plotly.js](https://plotly.com/javascript/) - 用于三元图绘制
+
+⚠️如果打开没有表格，请下载zip文件。⚠️
+1.  **解压缩**：请首先将其**解压缩**到一个文件夹中（例如解压到桌面）。
+2.  **打开文件夹**：进入解压缩后的 `plot-offline` 文件夹。
+3.  **运行**：**双击 `变质岩三角图投图.html` 文件**。它将在您的默认浏览器（如 Chrome, Edge, Firefox）中打开并立即可用。
+
+> **重要提示**：
+> * 请保持 `变质岩三角图投图.html` 文件和 `lib` 文件夹在同一目录下。
+> * 请勿删除 `lib` 文件夹或更改其内部文件，它们是本工具运行所需的核心“零件”。
+> * 此版本**无需互联网**即可运行。
+
+---
+
+## 📂 文件夹结构
+
+本软件包包含以下文件：
+MetaPlot-Offline/ 
+   ├── index.html (<- 双击此文件以运行软件) 
+   └── lib/ (<- 核心库文件夹，请勿移动) 
+      ├── handsontable.full.min.css 
+      ├── handsontable.full.min.js 
+      └── plotly-2.32.0.min.js

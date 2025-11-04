@@ -78,9 +78,9 @@
 ## 📂 文件夹结构
 
 本软件包包含以下文件：
-MetaPlot-Offline/ 
-   ├── index.html (<- 双击此文件以运行软件) 
-   └── lib/ (<- 核心库文件夹，请勿移动) 
-      ├── handsontable.full.min.css 
-      ├── handsontable.full.min.js 
-      └── plotly-2.32.0.min.js
+MetaPlot-Offline/ <br>
+    ├── index.html (<- 双击此文件以运行软件) <br>
+    └── lib/ (<- 核心库文件夹，请勿移动) <br>
+        ├── handsontable.full.min.css <br>
+        ├── handsontable.full.min.js <br>
+        └── plotly-2.32.0.min.js <br>
